@@ -139,7 +139,8 @@ export function createStockLabelTexture(stock: StockQuote, isSelected: boolean):
   // Price line
   ctx.font = 'bold 34px "JetBrains Mono", monospace';
   ctx.fillStyle = '#f8fafc';
-  ctx.fillText(`$${stock.price.toFixed(2)}`, 20, 102);
+  const currencySymbol = stock.currency === 'INR' ? '₹' : '$';
+  ctx.fillText(`${currencySymbol}${stock.price.toFixed(2)}`, 20, 102);
 
   // Percent change pill badge
   const pctStr = `${isUp ? '+' : ''}${stock.changePercent.toFixed(2)}%`;

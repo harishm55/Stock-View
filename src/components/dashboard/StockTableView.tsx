@@ -173,7 +173,7 @@ export const StockTableView: React.FC<StockTableViewProps> = ({
                     </td>
 
                     <td className="py-3 px-3 text-right font-bold text-white">
-                      ${stock.price.toFixed(2)}
+                      {stock.currency === 'INR' ? '₹' : '$'}{stock.price.toFixed(2)}
                     </td>
 
                     <td className={`py-3 px-3 text-right font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -184,7 +184,7 @@ export const StockTableView: React.FC<StockTableViewProps> = ({
                     </td>
 
                     <td className="py-3 px-3 text-right text-slate-200">
-                      ${stock.marketCap}B
+                      {stock.currency === 'INR' ? '₹' : '$'}{stock.marketCap}B
                     </td>
 
                     <td className="py-3 px-3 text-right text-slate-300">

@@ -115,10 +115,12 @@ export default function App() {
         const stocksData = await stocksRes.json();
         if (stocksData.stocks) {
           setStocks(stocksData.stocks);
-          // Keep selected stock quote in sync
+          // Keep selected stock quote in sync, merging any newly fetched details
           if (selectedStock) {
             const updated = stocksData.stocks.find((s: StockQuote) => s.symbol === selectedStock.symbol);
-            if (updated) setSelectedStock(updated);
+            if (updated) {
+              setSelectedStock(prev => ({ ...prev, ...updated }));
+            }
           }
         }
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MarketOverviewData, StockQuote } from '../../types/stock.ts';
 import { 
   TrendingUp, 
@@ -39,14 +39,50 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const filteredStocks = searchQuery.trim()
-    ? stocks.filter(
-        s =>
-          s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (searchQuery.trim().length >= 2) {
+        setIsSearching(true);
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setSearchResults(data.results || []);
+          }
+        } catch (error) {
+          console.error('Search error:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectResult = async (result: any) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    
+    // Fetch full stock details from backend
+    try {
+      const res = await fetch(`/api/stocks/${encodeURIComponent(result.symbol)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stock) {
+          onSelectStock(data.stock);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching stock details:', error);
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-[#060a12]/95 border-b border-slate-800 select-none">
@@ -92,34 +128,30 @@ export const Header: React.FC<HeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder="Search stocks (NVDA, AAPL, TSLA)..."
+              placeholder="Search stocks (Reliance, NVDA, AAPL)..."
               className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
             />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-3 h-3 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
           </div>
 
           {/* Autocomplete Dropdown */}
-          {isSearchOpen && filteredStocks.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden z-50">
-              {filteredStocks.slice(0, 6).map(s => (
+          {isSearchOpen && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden z-50 max-h-[400px] overflow-y-auto">
+              {searchResults.map(result => (
                 <button
-                  key={s.symbol}
-                  onClick={() => {
-                    onSelectStock(s);
-                    setIsSearchOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="w-full px-3 py-2 text-left hover:bg-slate-800 flex items-center justify-between border-b border-slate-800/60 last:border-0"
+                  key={result.symbol}
+                  onClick={() => handleSelectResult(result)}
+                  className="w-full px-4 py-3 text-left hover:bg-slate-800 flex flex-col border-b border-slate-800/60 last:border-0"
                 >
-                  <div>
-                    <span className="font-mono font-bold text-xs text-white">{s.symbol}</span>
-                    <span className="text-[11px] text-slate-400 ml-2">{s.name}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-xs text-white">{result.symbol}</span>
+                    <span className="text-[10px] text-slate-500 uppercase">{result.exchange}</span>
                   </div>
-                  <div className="text-right font-mono text-xs">
-                    <span className="text-white">${s.price.toFixed(2)}</span>
-                    <span className={`ml-2 text-[10px] ${s.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {s.change >= 0 ? '+' : ''}{s.changePercent.toFixed(1)}%
-                    </span>
-                  </div>
+                  <span className="text-[11px] text-slate-400 truncate mt-0.5">{result.name}</span>
                 </button>
               ))}
             </div>
@@ -181,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
           {overview.indices.map(idx => (
             <div key={idx.symbol} className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-slate-400">{idx.name}:</span>
-              <span className="text-white font-semibold">{idx.price.toFixed(2)}</span>
+              <span className="text-white font-semibold">{idx.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               <span className={`flex items-center ${idx.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {idx.change >= 0 ? '+' : ''}{idx.changePercent.toFixed(2)}%
               </span>
@@ -196,7 +228,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 flex-shrink-0 hover:text-sky-300 transition-colors"
             >
               <span className="text-slate-300 font-bold">{s.symbol}</span>
-              <span className="text-slate-100">${s.price.toFixed(2)}</span>
+              <span className="text-slate-100">{s.currency === 'INR' ? '₹' : '$'}{s.price.toFixed(2)}</span>
               <span className={`text-[10px] ${s.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {s.change >= 0 ? '+' : ''}{s.changePercent.toFixed(1)}%
               </span>

@@ -1,8 +1,9 @@
 export interface StockQuote {
   symbol: string;
   name: string;
-  sector: 'Technology' | 'Financial Services' | 'Consumer Cyclical' | 'Communication' | 'Healthcare' | 'Energy' | 'Indices';
+  sector: 'Technology' | 'Financial Services' | 'Consumer Cyclical' | 'Communication' | 'Healthcare' | 'Energy' | 'Indices' | 'Industrials' | 'Consumer Defensive' | 'Utilities';
   price: number;
+  currency: string;
   change: number;
   changePercent: number;
   open: number;
@@ -24,6 +25,15 @@ export interface StockQuote {
   sma200: number;
   exchange: string;
   lastUpdated: string;
+  about?: string;
+  balanceSheet?: {
+    totalAssets: number;
+    totalLiabilities: number;
+    totalEquity: number;
+    cash: number;
+    debt: number;
+  };
+  peHistory?: { date: string; pe: number }[];
 }
 
 export interface CandleData {

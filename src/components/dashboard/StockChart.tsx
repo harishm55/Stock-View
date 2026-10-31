@@ -6,6 +6,7 @@ interface StockChartProps {
   candles: CandleData[];
   symbol: string;
   currentPrice: number;
+  currency?: string;
   timeframe: '1d' | '1w' | '1mo' | '1y' | '5y';
   setTimeframe: (tf: '1d' | '1w' | '1mo' | '1y' | '5y') => void;
 }
@@ -14,9 +15,11 @@ export const StockChart: React.FC<StockChartProps> = ({
   candles,
   symbol,
   currentPrice,
+  currency = 'USD',
   timeframe,
   setTimeframe
 }) => {
+  const currencySymbol = currency === 'INR' ? '₹' : '$';
   const [chartType, setChartType] = useState<'candle' | 'line'>('candle');
   const [showSMA, setShowSMA] = useState(true);
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
@@ -103,10 +106,10 @@ export const StockChart: React.FC<StockChartProps> = ({
 
         {/* Live candle HUD inspector */}
         <div className="text-xs font-mono text-slate-300 flex items-center gap-3">
-          <span>O: <strong className="text-slate-100">${activeCandle.open.toFixed(2)}</strong></span>
-          <span>H: <strong className="text-emerald-400">${activeCandle.high.toFixed(2)}</strong></span>
-          <span>L: <strong className="text-rose-400">${activeCandle.low.toFixed(2)}</strong></span>
-          <span>C: <strong className="text-white">${activeCandle.close.toFixed(2)}</strong></span>
+          <span>O: <strong className="text-slate-100">{currencySymbol}{activeCandle.open.toFixed(2)}</strong></span>
+          <span>H: <strong className="text-emerald-400">{currencySymbol}{activeCandle.high.toFixed(2)}</strong></span>
+          <span>L: <strong className="text-rose-400">{currencySymbol}{activeCandle.low.toFixed(2)}</strong></span>
+          <span>C: <strong className="text-white">{currencySymbol}{activeCandle.close.toFixed(2)}</strong></span>
           <span className="text-slate-400 hidden sm:inline">{activeCandle.dateStr}</span>
         </div>
 
@@ -174,7 +177,7 @@ export const StockChart: React.FC<StockChartProps> = ({
                   fontFamily="monospace"
                   textAnchor="end"
                 >
-                  ${priceVal.toFixed(2)}
+                  {currencySymbol}{priceVal.toFixed(2)}
                 </text>
               </g>
             );

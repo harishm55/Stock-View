@@ -68,6 +68,32 @@ function updateMicroTicks() {
 // Tick periodically
 setInterval(updateMicroTicks, 2000);
 
+// Helper: Search for stocks via Yahoo Finance
+async function searchStocks(query: string) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      signal: AbortSignal.timeout(3000)
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.quotes || []).map((q: any) => ({
+      symbol: q.symbol,
+      name: q.shortname || q.longname || q.symbol,
+      exchange: q.exchange,
+      type: q.quoteType,
+      sector: q.sector || 'N/A'
+    }));
+  } catch (error) {
+    console.error('Search error:', error);
+    return [];
+  }
+}
+
 // Attempt fetching live data from Yahoo Finance free endpoint
 async function fetchYahooQuote(symbol: string): Promise<Partial<StockQuote> | null> {
   try {
@@ -90,8 +116,26 @@ async function fetchYahooQuote(symbol: string): Promise<Partial<StockQuote> | nu
     const change = Number((price - previousClose).toFixed(2));
     const changePercent = Number(((change / previousClose) * 100).toFixed(2));
 
+    // Simulated balance sheet based on market cap and price
+    const marketCap = Number(((price * 1000000000) / 1e9).toFixed(1));
+    const balanceSheet = {
+      totalAssets: Number((marketCap * 1.5).toFixed(1)),
+      totalLiabilities: Number((marketCap * 0.8).toFixed(1)),
+      totalEquity: Number((marketCap * 0.7).toFixed(1)),
+      cash: Number((marketCap * 0.15).toFixed(1)),
+      debt: Number((marketCap * 0.4).toFixed(1)),
+    };
+
+    // Generate simulated PE history
+    const peHistory = Array.from({ length: 12 }, (_, i) => ({
+      date: new Date(Date.now() - (11 - i) * 30 * 24 * 3600 * 1000).toISOString().slice(0, 7),
+      pe: Number((20 + Math.random() * 15).toFixed(1))
+    }));
+
     return {
       symbol: meta.symbol,
+      name: meta.symbol, // Yahoo chart meta doesn't always have long name
+      currency: meta.currency || 'USD',
       price,
       change,
       changePercent,
@@ -102,7 +146,9 @@ async function fetchYahooQuote(symbol: string): Promise<Partial<StockQuote> | nu
       previousClose,
       volume: meta.regularMarketVolume ?? 10000000,
       exchange: meta.exchangeName ?? 'US',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      balanceSheet,
+      peHistory
     };
   } catch {
     return null;
@@ -119,7 +165,7 @@ async function fetchYahooHistory(symbol: string, range: '1d' | '1w' | '1mo' | '1
       '1y': '1wk',
       '5y': '1mo'
     };
-    const interval = intervalMap[range] || '1d';
+    const interval = (intervalMap as any)[range] || '1d';
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
     
     const res = await fetch(url, {
@@ -186,6 +232,16 @@ async function fetchYahooHistory(symbol: string, range: '1d' | '1w' | '1mo' | '1
 
 // API Routes
 
+// Search endpoint for suggestions
+app.get('/api/search', async (req, res) => {
+  const query = (req.query.q as string) || '';
+  if (query.length < 2) {
+    return res.json({ results: [] });
+  }
+  const results = await searchStocks(query);
+  res.json({ results });
+});
+
 // 1. Get all tracked stocks
 app.get('/api/stocks', (_req, res) => {
   res.json({
@@ -208,6 +264,7 @@ app.get('/api/stocks/:symbol', async (req, res) => {
         symbol,
         name: yahooQuote.symbol || symbol,
         sector: 'Technology',
+        currency: yahooQuote.currency || 'USD',
         price: yahooQuote.price,
         change: yahooQuote.change || 0,
         changePercent: yahooQuote.changePercent || 0,
@@ -229,7 +286,9 @@ app.get('/api/stocks/:symbol', async (req, res) => {
         sma50: Number((yahooQuote.price * 0.95).toFixed(2)),
         sma200: Number((yahooQuote.price * 0.90).toFixed(2)),
         exchange: yahooQuote.exchange || 'US',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        balanceSheet: yahooQuote.balanceSheet,
+        peHistory: yahooQuote.peHistory
       };
       liveStocks.push(newStock);
       stock = newStock;
