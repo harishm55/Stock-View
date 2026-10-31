@@ -1,0 +1,6 @@
+{
+  "name": "ApexPulse - 3D Real-Time Stock Tracker & Investment Intelligence",
+  "description": "Real-time stock market tracking, 3D financial market visualization, technical indicators, and AI-powered investment analysis to inform decision making.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
