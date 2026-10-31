@@ -130,7 +130,19 @@ export default function App() {
         setMarketOverview(overviewData);
       }
     } catch {
-      // In offline/dev environment, fallback smoothly
+      // STATIC FALLBACK: If backend is missing (e.g. GitHub Pages), simulate ticks on client
+      setStocks(prev => prev.map(s => {
+        const volatility = (s.beta || 1.0) * 0.0005;
+        const delta = (Math.random() - 0.495) * volatility;
+        const newPrice = s.price * (1 + delta);
+        return {
+          ...s,
+          price: newPrice,
+          change: newPrice - s.previousClose,
+          changePercent: ((newPrice - s.previousClose) / s.previousClose) * 100,
+          lastUpdated: new Date().toISOString()
+        };
+      }));
     }
   }, [selectedStock?.symbol]);
 
